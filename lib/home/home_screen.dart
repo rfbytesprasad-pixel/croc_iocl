@@ -8,11 +8,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../home/bloc/ro_bloc.dart';
+import '../home/bloc/ro_event.dart';
 import '../home/bloc/ro_state.dart';
+import '../home/ui/connecting_screen.dart';
 import '../home/ui/ip_not_configured_screen.dart';
 import '../pump/ui/pump_screen.dart';
 import '../tank/ui/tank_screen.dart';
-import '../home/ui/connecting_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,7 +25,11 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   late Timer _clockTimer;
-   bool _hasBooted = false;   
+  bool _hasBooted = false;
+
+  /// Fires ProbeApi exactly once when HomeScreen mounts.
+  /// (HomePage can't do this because it's not rendered during RoInitial/RoApiProbing.)
+  bool _probeFired = false;
 
   @override
   void initState() {
@@ -38,6 +43,16 @@ class _HomeScreenState extends State<HomeScreen> {
       const Duration(seconds: 1),
       (_) => setState(() {}),
     );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (!_probeFired) {
+      _probeFired = true;
+      context.read<RoBloc>().add(const ProbeApi());
+    }
   }
 
   @override
@@ -66,19 +81,17 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return BlocBuilder<RoBloc, RoState>(
       builder: (context, state) {
-      // Boot is complete the first time we reach a "settled" state —
-// meaning the initial probe + details fetch either finished or failed.
-if (!_hasBooted && (state is RoLoaded || state is RoError)) {
-  _hasBooted = true;
-}
+        // Boot is complete the first time we reach a "settled" state —
+        // meaning the initial probe + details fetch either finished or failed.
+        if (!_hasBooted && (state is RoLoaded || state is RoError)) {
+          _hasBooted = true;
+        }
 
-// Nav is hidden only during the initial boot, during a probe,
-// or when the app is blocked because /roconfig couldn't be reached.
-// Once booted, subsequent RoLoading (pull-to-refresh, polling, etc.)
-// will NOT hide the nav.
-final isBlocked = !_hasBooted
-    || state is RoApiProbing
-    || state is RoApiNotConfigured;
+        // Nav is hidden only during the initial boot, during a probe,
+        // or when the app is blocked because /roconfig couldn't be reached.
+        final isBlocked = !_hasBooted
+            || state is RoApiProbing
+            || state is RoApiNotConfigured;
 
         return Scaffold(
           backgroundColor: Colors.white,
@@ -140,10 +153,10 @@ final isBlocked = !_hasBooted
             ),
           ),
           body: state is RoInitial || state is RoApiProbing
-    ? const ConnectingScreen()
-    : state is RoApiNotConfigured
-        ? const ApiNotConfiguredScreen()
-        : IndexedStack(index: _selectedIndex, children: _pages),
+              ? const ConnectingScreen()
+              : state is RoApiNotConfigured
+                  ? const ApiNotConfiguredScreen()
+                  : IndexedStack(index: _selectedIndex, children: _pages),
           bottomNavigationBar: isBlocked
               ? null
               : NavigationBar(

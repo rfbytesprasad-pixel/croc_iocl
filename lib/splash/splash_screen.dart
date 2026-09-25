@@ -111,11 +111,10 @@
 
 // splash/splash_screen.dart
 import 'dart:async';
-import 'package:croc_iocl_atos/home/bloc/ro_bloc.dart';
-import 'package:croc_iocl_atos/home/bloc/ro_event.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../home/home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -154,9 +153,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _controller.forward();
-    context.read<RoBloc>().add(
-          const LoadRoDetails(),
-        );
+// 3. Navigate to HomeScreen after 3s
     // 3. Navigate to HomeScreen after 3s
     Timer(const Duration(seconds: 3), () {
       if (!mounted) return;
