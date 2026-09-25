@@ -81,7 +81,10 @@ class RoApiClient {
     }).toList();
 
     // Race: whichever succeeds first wins.
-    final results = await Future.wait(futures);
+    final results = await Future.wait(futures).timeout(
+  timeout + const Duration(seconds: 2),  // give inner timeouts a small buffer
+  onTimeout: () => List.filled(candidateIps.length, null),
+);
     for (final r in results) {
       if (r != null) return r;
     }

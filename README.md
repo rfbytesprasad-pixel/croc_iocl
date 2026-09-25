@@ -217,3 +217,24 @@ Verify received APKs with SHA-256
 
 Sideloading is a known malware vector
 
+
+## Session: 2026-09-25
+
+### Fixed
+- Probe never fired (HomePage not mounted during probe state)
+- SplashScreen fired LoadRoDetails prematurely
+- roautoid hardcoded to 166616 — now reads from /pump fallback
+- Tank baseUrl stale — now reads fresh each request
+- RO Code expandable section added
+
+### Verified working
+- Probe finds ESP at .101
+- /roconfig loads, DU list populates
+- Home shows RO Code 166616
+- Preset screen dropdowns work
+- Pumps tab shows live data
+
+### Open
+- DU number on pump card (awaiting senior's input on source)
+- Backend `/tankstatus` down at site
+- roautoid fallback untested at senior's site (no /roconfig there)
