@@ -103,9 +103,12 @@ class _RoDetailsCardState extends State<RoDetailsCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Tappable RO Code — expands to show config details
+                // Tappable RO Code — expands to show config details.
+                // If config is null, expansion is disabled.
                 InkWell(
-                  onTap: () => setState(() => _expanded = !_expanded),
+                  onTap: config == null
+                      ? null
+                      : () => setState(() => _expanded = !_expanded),
                   borderRadius: BorderRadius.circular(8),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
@@ -118,57 +121,45 @@ class _RoDetailsCardState extends State<RoDetailsCard> {
                             value: ro.roCode.toString(),
                           ),
                         ),
-                        Icon(
-                          _expanded
-                              ? Icons.expand_less_rounded
-                              : Icons.expand_more_rounded,
-                          color: const Color(0xFFF37022),
-                          size: 24,
-                        ),
+                        if (config != null)
+                          Icon(
+                            _expanded
+                                ? Icons.expand_less_rounded
+                                : Icons.expand_more_rounded,
+                            color: const Color(0xFFF37022),
+                            size: 24,
+                          ),
                       ],
                     ),
                   ),
                 ),
 
-                // Expanded config details
-                if (_expanded) ...[
+                // Expanded config details (only shown when config is loaded)
+                if (_expanded && config != null) ...[
                   const SizedBox(height: 14),
-                  if (config == null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Text(
-                        'Loading configuration…',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    )
-                  else ...[
-                    _InfoRow(
-                      icon: Icons.storefront_outlined,
-                      title: "RO Name",
-                      value: config.roName.isEmpty ? '—' : config.roName,
-                    ),
-                    const SizedBox(height: 14),
-                    _InfoRow(
-                      icon: Icons.devices_other_outlined,
-                      title: "Total DUs",
-                      value: config.totalDUs.toString(),
-                    ),
-                    const SizedBox(height: 14),
-                    _InfoRow(
-                      icon: Icons.local_gas_station_outlined,
-                      title: "Total Pumps",
-                      value: config.totalPumps.toString(),
-                    ),
-                    const SizedBox(height: 14),
-                    _InfoRow(
-                      icon: Icons.water_drop_outlined,
-                      title: "Total Tanks",
-                      value: config.totalTanks.toString(),
-                    ),
-                  ],
+                  _InfoRow(
+                    icon: Icons.storefront_outlined,
+                    title: "RO Name",
+                    value: config.roName.isEmpty ? '—' : config.roName,
+                  ),
+                  const SizedBox(height: 14),
+                  _InfoRow(
+                    icon: Icons.devices_other_outlined,
+                    title: "Total DUs",
+                    value: config.totalDUs.toString(),
+                  ),
+                  const SizedBox(height: 14),
+                  _InfoRow(
+                    icon: Icons.local_gas_station_outlined,
+                    title: "Total Pumps",
+                    value: config.totalPumps.toString(),
+                  ),
+                  const SizedBox(height: 14),
+                  _InfoRow(
+                    icon: Icons.water_drop_outlined,
+                    title: "Total Tanks",
+                    value: config.totalTanks.toString(),
+                  ),
                 ],
 
                 const Padding(
