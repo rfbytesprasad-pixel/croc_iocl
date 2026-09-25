@@ -1,7 +1,7 @@
 import '../model/ro_model.dart';
 import '../model/ro_config_model.dart';
+import '../../pump/data/pump_api_client.dart' hide NetworkException, ServerException, ParseException;
 import 'ro_api_client.dart';
-
 
 /// ─────────────────────────────────────────────────────────────────────────────
 /// Repository — the only layer the BLoC talks to.
@@ -21,6 +21,30 @@ class RoRepository {
   /// Swap the working IP after a successful probe.
   void setBaseUrl(String url) => _apiClient.baseUrl = url;
 
+  /// Fallback: read roautoid from /pump when /roconfig is unavailable.
+  /// Some ESPs (e.g. at the Gujarat site) don't serve /roconfig but do
+  /// return roautoid on every /pump entry.
+  Future<PumpRoCodeResult> fetchPumpRoCode() async {
+    final client = PumpApiClient(baseUrl: _apiClient.baseUrl);
+    try {
+      final pumps = await client.getPumpStatus();
+      if (pumps.isEmpty) {
+  return PumpRoCodeError('No pumps returned from /pump');
+} 
+      return PumpRoCodeSuccess(pumps.first.roAutoId);
+    } on NetworkException catch (e) {
+      return PumpRoCodeError('Network : ${e.message}');
+    } on ServerException catch (e) {
+      return PumpRoCodeError('Server (${e.statusCode})');
+    } on ParseException catch (e) {
+      return PumpRoCodeError('Parse : ${e.message}');
+    } catch (e) {
+      return PumpRoCodeError('Unexpected : $e');
+    } finally {
+      client.dispose();
+    }
+  }
+
   /// /rodetails
   Future<RoRepositoryResult> fetchRoDetails() async {
     try {
@@ -33,18 +57,18 @@ class RoRepository {
         original: e,
       );
     } on ServerException catch (e) {
-  // /rodetails may not be implemented on all ESPs. Treat 404 as
-  // "no details available" and return an empty model so Home shows
-  // a placeholder instead of a hard error.
-  if (e.statusCode == 404) {
-    return RoRepositorySuccess(RoModel.empty());
-  }
-  return RoRepositoryError(
-    message: 'Server error (${e.statusCode}). Please try again.',
-    type: RoErrorType.server,
-    original: e,
-  );
-} on ParseException catch (e) {
+      // /rodetails may not be implemented on all ESPs. Treat 404 as
+      // "no details available" and return an empty model so Home shows
+      // a placeholder instead of a hard error.
+      if (e.statusCode == 404) {
+        return RoRepositorySuccess(RoModel.empty());
+      }
+      return RoRepositoryError(
+        message: 'Server error (${e.statusCode}). Please try again.',
+        type: RoErrorType.server,
+        original: e,
+      );
+    } on ParseException catch (e) {
       return RoRepositoryError(
         message: 'Unexpected data from server.',
         type: RoErrorType.parse,
@@ -134,6 +158,18 @@ class RoConfigRepositoryError extends RoConfigRepositoryResult {
     required this.type,
     required this.original,
   });
+}
+
+sealed class PumpRoCodeResult {}
+
+class PumpRoCodeSuccess extends PumpRoCodeResult {
+  final int roCode;
+  PumpRoCodeSuccess(this.roCode);
+}
+
+class PumpRoCodeError extends PumpRoCodeResult {
+  final String message;
+  PumpRoCodeError(this.message);
 }
 
 enum RoErrorType {

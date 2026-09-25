@@ -103,24 +103,24 @@ int? _selectedNozzleNo;
       return;
     }
 
-    final config = context.read<RoBloc>().roConfig;
+    final bloc = context.read<RoBloc>();
 
-    context.read<PresetCubit>().submitPreset(
-          roAutoId: config?.roCode ?? 166616,
-          duid: _selectedDuNo!,
-          pumpAutoId: _selectedPumpNo!,
-          nozzleAutoId: _selectedNozzleNo!,
-          operationId: _selectedOperation,
-          presetMode: _selectedMode,
-          presetMop: _selectedMop,
-          presetValue: _presetValueController.text.trim(),
-          updateBy: 1,
-        );
+context.read<PresetCubit>().submitPreset(
+      roAutoId: bloc.runtimeRoCode ?? 0,
+      duid: _selectedDuNo!,
+      pumpAutoId: _selectedPumpNo!,
+      nozzleAutoId: _selectedNozzleNo!,
+      operationId: _selectedOperation,
+      presetMode: _selectedMode,
+      presetMop: _selectedMop,
+      presetValue: _presetValueController.text.trim(),
+      updateBy: 1,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final config = context.watch<RoBloc>().roConfig;
+    final config = context.read<RoBloc>().roConfig;
     final duList = _duList(config);
     final pumpList = _pumpsForDu(config, _selectedDuNo);
     final nozzleList = _nozzlesForPump(config, _selectedDuNo, _selectedPumpNo);
