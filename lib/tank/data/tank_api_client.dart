@@ -1,9 +1,10 @@
 // lib/tank/data/tank_api_client.dart
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+
 import 'package:croc_iocl_atos/core/constants.dart';
 import 'package:croc_iocl_atos/tank/model/tank_status_model.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class NetworkException implements Exception {
@@ -37,8 +38,7 @@ class TankApiClient {
   TankApiClient({http.Client? client}) : _client = client ?? http.Client();
 
   Future<List<TankStatusModel>> getTankStatus({String? siteId}) async {
-    final baseUrl = AppConstants.baseUrl;   // ← read fresh each call
-
+    final baseUrl = AppConstants.baseUrl;
     try {
       final uri = Uri.parse('$baseUrl/tankstatus').replace(
         queryParameters: siteId != null ? {'siteId': siteId} : null,
