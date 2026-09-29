@@ -35,7 +35,7 @@ class _RoDetailsCardState extends State<RoDetailsCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header band with gradient + logo
+          // Header band
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
@@ -103,8 +103,7 @@ class _RoDetailsCardState extends State<RoDetailsCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Tappable RO Code — expands to show config details.
-                // If config is null, expansion is disabled.
+                // Tappable RO Code — expands to show config details
                 InkWell(
                   onTap: config == null
                       ? null
@@ -134,7 +133,7 @@ class _RoDetailsCardState extends State<RoDetailsCard> {
                   ),
                 ),
 
-                // Expanded config details (only shown when config is loaded)
+                // Expanded config details
                 if (_expanded && config != null) ...[
                   const SizedBox(height: 14),
                   _InfoRow(
@@ -143,11 +142,17 @@ class _RoDetailsCardState extends State<RoDetailsCard> {
                     value: config.roName.isEmpty ? '—' : config.roName,
                   ),
                   const SizedBox(height: 14),
-                  _InfoRow(
+
+                  // Total DUs — expandable, shows DU tree when tapped
+                  _ExpandableInfoRow(
                     icon: Icons.devices_other_outlined,
                     title: "Total DUs",
                     value: config.totalDUs.toString(),
+                    children: config.duList
+                        .map((du) => _DuTile(du: du))
+                        .toList(),
                   ),
+
                   const SizedBox(height: 14),
                   _InfoRow(
                     icon: Icons.local_gas_station_outlined,
@@ -179,6 +184,203 @@ class _RoDetailsCardState extends State<RoDetailsCard> {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Expandable info row — same style as _InfoRow but tappable, shows children
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ExpandableInfoRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String value;
+  final List<Widget> children;
+
+  const _ExpandableInfoRow({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: const EdgeInsets.only(left: 42, bottom: 4),
+        shape: const Border(),
+        collapsedShape: const Border(),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF37022).withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            icon,
+            color: const Color(0xFFF37022),
+            size: 20,
+          ),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1A1A1A),
+              ),
+            ),
+          ],
+        ),
+        children: children,
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DU tree: DU → Pumps → Nozzles
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _DuTile extends StatelessWidget {
+  final DuConfig du;
+
+  const _DuTile({required this.du});
+
+  @override
+  Widget build(BuildContext context) {
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+        childrenPadding: const EdgeInsets.only(left: 12, bottom: 6),
+        shape: const Border(),
+        collapsedShape: const Border(),
+        leading: Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF37022).withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Icon(
+            Icons.devices_other_outlined,
+            size: 18,
+            color: Color(0xFFF37022),
+          ),
+        ),
+        title: Text(
+          'DU ${du.duNo}',
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF1A1A1A),
+          ),
+        ),
+        subtitle: Text(
+          '${du.pumpList.length} pumps · ${du.nozzleCount} nozzles',
+          style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+        ),
+        children: du.pumpList.map((pump) => _PumpTile(pump: pump)).toList(),
+      ),
+    );
+  }
+}
+
+class _PumpTile extends StatelessWidget {
+  final PumpConfig pump;
+
+  const _PumpTile({required this.pump});
+
+  @override
+  Widget build(BuildContext context) {
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+        childrenPadding: const EdgeInsets.only(left: 12, bottom: 4),
+        shape: const Border(),
+        collapsedShape: const Border(),
+        leading: const Icon(
+          Icons.local_gas_station_outlined,
+          size: 18,
+          color: Color(0xFF666666),
+        ),
+        title: Text(
+          'Pump ${pump.pumpNo}',
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF1A1A1A),
+          ),
+        ),
+        subtitle: Text(
+          '${pump.nozzleList.length} nozzles',
+          style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+        ),
+        children:
+            pump.nozzleList.map((n) => _NozzleRow(nozzle: n)).toList(),
+      ),
+    );
+  }
+}
+
+class _NozzleRow extends StatelessWidget {
+  final NozzleConfig nozzle;
+
+  const _NozzleRow({required this.nozzle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      child: Row(
+        children: [
+          const SizedBox(width: 8),
+          Icon(
+            Icons.circle,
+            size: 6,
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Nozzle ${nozzle.nozzleNo}',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1A1A1A),
+              ),
+            ),
+          ),
+          Text(
+            'Product ${nozzle.productNo} · Tank ${nozzle.tankNo}',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reusable info row (unchanged)
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _InfoRow extends StatelessWidget {
   final IconData icon;
