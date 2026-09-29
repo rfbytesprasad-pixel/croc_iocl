@@ -2,11 +2,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../core/constants.dart';
+import '../../home/bloc/ro_bloc.dart';
 import '../cubit/price_change_cubit.dart';
 import '../cubit/price_change_state.dart';
 import '../data/price_change_api_client.dart';
 import '../data/price_change_repository.dart';
-import '../../core/constants.dart';
 import '../model/price_change_model.dart';
 
 class PriceChangeScreen extends StatelessWidget {
@@ -35,16 +37,14 @@ class _PriceChangeView extends StatefulWidget {
 class _PriceChangeViewState extends State<_PriceChangeView> {
   final _formKey = GlobalKey<FormState>();
   final _priceController = TextEditingController();
-  
+
   ProductOption? _selectedProduct;
 
   @override
   void dispose() {
     _priceController.dispose();
-    
     super.dispose();
   }
-
 
   void _onFieldChanged() {
     final cubit = context.read<PriceChangeCubit>();
@@ -55,24 +55,40 @@ class _PriceChangeViewState extends State<_PriceChangeView> {
   }
 
   void _submit() {
-  if (!_formKey.currentState!.validate()) return;
-  if (_selectedProduct == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Please select a product')),
-    );
-    return;
-  }
-
-  context.read<PriceChangeCubit>().submitPriceChange(
-        roCode: '384619',                          // hardcoded
-        roAutoId: 384619,                          // hardcoded
-        productAutoId: _selectedProduct!.id,
-        price: double.parse(_priceController.text.trim()),
-        effectiveFrom: DateTime.now(),              // hardcoded
-        effectiveTo: DateTime.now().add(const Duration(days: 365)), // hardcoded
-        updateBy: 1,                                // hardcoded
+    if (!_formKey.currentState!.validate()) return;
+    if (_selectedProduct == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a product')),
       );
-}
+      return;
+    }
+
+    // Read the runtime roCode from RoBloc — set from /roconfig or /pump fallback.
+    // Never hardcoded — each ESP has its own roCode.
+    final runtimeRoCode = context.read<RoBloc>().runtimeRoCode;
+
+    if (runtimeRoCode == null || runtimeRoCode == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Outlet code not available. Please reconnect to the server.',
+          ),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    context.read<PriceChangeCubit>().submitPriceChange(
+          roCode: runtimeRoCode.toString(),
+          roAutoId: runtimeRoCode,
+          productAutoId: _selectedProduct!.id,
+          price: double.parse(_priceController.text.trim()),
+          effectiveFrom: DateTime.now(),
+          effectiveTo: DateTime.now().add(const Duration(days: 365)),
+          updateBy: 1,
+        );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +105,8 @@ class _PriceChangeViewState extends State<_PriceChangeView> {
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: Colors.black.withValues(alpha: 0.08)),
+          child: Container(
+              height: 1, color: Colors.black.withValues(alpha: 0.08)),
         ),
         title: const Padding(
           padding: EdgeInsets.symmetric(horizontal: 4),
@@ -105,7 +122,6 @@ class _PriceChangeViewState extends State<_PriceChangeView> {
       ),
       body: BlocConsumer<PriceChangeCubit, PriceChangeState>(
         listener: (context, state) {
-          // Dismiss keyboard when result comes back
           if (state is PriceChangeSubmitted || state is PriceChangeError) {
             FocusScope.of(context).unfocus();
           }
@@ -120,7 +136,7 @@ class _PriceChangeViewState extends State<_PriceChangeView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── Result banner ────────────────────────────────────
+                  // ── Result banner ────────────────────────────────
                   if (state is PriceChangeSubmitted)
                     _ResultBanner(
                       message: state.response.displayMessage,
@@ -134,68 +150,70 @@ class _PriceChangeViewState extends State<_PriceChangeView> {
                       isError: true,
                     ),
 
-                 
-
                   _SectionCard(
-  title: 'Price Details',
-  children: [
-    const Text(
-      'Product',
-      style: TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: Color(0xFF444444),
-      ),
-    ),
-    const SizedBox(height: 6),
-    DropdownButtonFormField<ProductOption>(
-      initialValue: _selectedProduct,
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: const Color(0xFFF8F8F8),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.grey.shade200),
-        ),
-      ),
-      hint: const Text('Select product'),
-      items: kProductOptions.map((product) {
-        return DropdownMenuItem(
-          value: product,
-          child: Text(product.name),
-        );
-      }).toList(),
-      onChanged: (value) {
-        setState(() => _selectedProduct = value);
-        _onFieldChanged();
-      },
-      validator: (value) => value == null ? 'Please select a product' : null,
-    ),
-    const SizedBox(height: 12),
-    _FormField(
-      label: 'New Price (₹)',
-      controller: _priceController,
-      hint: '70',
-      keyboardType: TextInputType.number,
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-      ],
-      onChanged: (_) => _onFieldChanged(),
-      validator: (v) {
-        if (v!.isEmpty) return 'Price is required';
-        final price = double.tryParse(v);
-        if (price == null || price <= 0) {
-          return 'Enter a valid price';
-        }
-        return null;
-      },
-    ),
-    const SizedBox(height: 12),
-    
-  ],
-),
-                  // ── Submit button ────────────────────────────────────
+                    title: 'Price Details',
+                    children: [
+                      const Text(
+                        'Product',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF444444),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      DropdownButtonFormField<ProductOption>(
+                        initialValue: _selectedProduct,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: const Color(0xFFF8F8F8),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide:
+                                BorderSide(color: Colors.grey.shade200),
+                          ),
+                        ),
+                        hint: const Text('Select product'),
+                        items: kProductOptions.map((product) {
+                          return DropdownMenuItem(
+                            value: product,
+                            child: Text(product.name),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() => _selectedProduct = value);
+                          _onFieldChanged();
+                        },
+                        validator: (value) =>
+                            value == null ? 'Please select a product' : null,
+                      ),
+                      const SizedBox(height: 12),
+                      _FormField(
+                        label: 'New Price (₹)',
+                        controller: _priceController,
+                        hint: '70',
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d*\.?\d{0,2}')),
+                        ],
+                        onChanged: (_) => _onFieldChanged(),
+                        validator: (v) {
+                          if (v!.isEmpty) return 'Price is required';
+                          final price = double.tryParse(v);
+                          if (price == null || price <= 0) {
+                            return 'Enter a valid price';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  ),
+
+                  // ── Submit button ────────────────────────────────
                   SizedBox(
                     width: double.infinity,
                     height: 52,
@@ -241,7 +259,7 @@ class _PriceChangeViewState extends State<_PriceChangeView> {
   }
 }
 
-// ── Result banner ──────────────────────────────────────────────────────────────
+// ── Result banner ─────────────────────────────────────────────────────────────
 class _ResultBanner extends StatelessWidget {
   final String message;
   final bool isSuccess;
@@ -304,7 +322,7 @@ class _ResultBanner extends StatelessWidget {
   }
 }
 
-// ── Section card wrapper ───────────────────────────────────────────────────────
+// ── Section card wrapper ──────────────────────────────────────────────────────
 class _SectionCard extends StatelessWidget {
   final String title;
   final List<Widget> children;
@@ -347,7 +365,7 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
-// ── Reusable text field ────────────────────────────────────────────────────────
+// ── Reusable text field ───────────────────────────────────────────────────────
 class _FormField extends StatelessWidget {
   final String label;
   final String hint;
@@ -394,16 +412,11 @@ class _FormField extends StatelessWidget {
           ),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade400,
-            ),
+            hintStyle: TextStyle(fontSize: 14, color: Colors.grey.shade400),
             filled: true,
             fillColor: const Color(0xFFF8F8F8),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 12,
-            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(color: Colors.grey.shade200),
@@ -414,10 +427,8 @@ class _FormField extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(
-                color: Color(0xFFF37022),
-                width: 1.5,
-              ),
+              borderSide:
+                  const BorderSide(color: Color(0xFFF37022), width: 1.5),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
@@ -433,4 +444,3 @@ class _FormField extends StatelessWidget {
     );
   }
 }
-
