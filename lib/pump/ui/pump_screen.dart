@@ -162,18 +162,22 @@ class _LoadedView extends StatelessWidget {
     this.errorBanner,
   });
 
-  /// Looks up the DU number for a given pump's auto-id by matching
-  /// `pump.pumpId == pumpAutoId` in /roconfig. Returns null if no match.
-  int? _findDuForPump(RoConfigModel? config, int pumpAutoId) {
-    if (config == null) return null;
-    for (final du in config.duList) {
-      for (final pump in du.pumpList) {
-        if (pump.pumpId == pumpAutoId) return du.duNo;
+ /// Returns the DU number and PumpConfig (for nozzle list) that match
+/// the given pump's auto-id from /pump. Returns (null, null) if no match.
+({int? duNo, PumpConfig? pumpConfig}) _resolvePumpLocation(
+  RoConfigModel? config,
+  int pumpAutoId,
+) {
+  if (config == null) return (duNo: null, pumpConfig: null);
+  for (final du in config.duList) {
+    for (final pump in du.pumpList) {
+      if (pump.pumpId == pumpAutoId) {
+        return (duNo: du.duNo, pumpConfig: pump);
       }
     }
-    return null;
   }
-
+  return (duNo: null, pumpConfig: null);
+}
   @override
   Widget build(BuildContext context) {
     final config = context.watch<RoBloc>().roConfig;
@@ -213,15 +217,17 @@ class _LoadedView extends StatelessWidget {
             child: Wrap(
               spacing: 12,
               runSpacing: 12,
-              children: pumps
-                  .map((p) => SizedBox(
-                        width: cardWidth,
-                        child: PumpCard(
-                          data: p,
-                          duNo: _findDuForPump(config, p.pumpAutoId),
-                        ),
-                      ))
-                  .toList(),
+             children: pumps.map((p) {
+  final loc = _resolvePumpLocation(config, p.pumpAutoId);
+  return SizedBox(
+    width: cardWidth,
+    child: PumpCard(
+      data: p,
+      duNo: loc.duNo,
+      pumpConfig: loc.pumpConfig,
+    ),
+  );
+}).toList(),
             ),
           ),
         ),

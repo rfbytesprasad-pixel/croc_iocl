@@ -1,157 +1,296 @@
 // lib/pump/ui/pump_card.dart
 import 'package:flutter/material.dart';
+import '../../home/model/ro_config_model.dart';
 import '../model/pump_status_model.dart';
 
 class PumpCard extends StatelessWidget {
   final PumpStatusModel data;
-  /// Which DU this pump belongs to. Null if unknown (no match in /roconfig).
   final int? duNo;
+  final PumpConfig? pumpConfig;
 
   const PumpCard({
     super.key,
     required this.data,
     this.duNo,
+    this.pumpConfig,
   });
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = data.gradientColors.first;
+    final statusColor = data.badgeColor;
 
-    return GestureDetector(
-      onTap: () {},
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: statusColor.withValues(alpha: 0.35),
-            width: 1.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: statusColor.withValues(alpha: 0.12),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: statusColor.withValues(alpha: 0.35),
+          width: 1.5,
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Left stripe
-                Container(width: 5, color: statusColor),
-
-                // Content
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 10, 12, 10),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // ── Header ─────────────────────────────────
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  duNo != null
-                                      ? 'DU $duNo · P${data.pumpAutoId} · N${data.nozzleAutoId}'
-                                      : 'P${data.pumpAutoId} · N${data.nozzleAutoId}',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF1A1A1A),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 7, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: statusColor.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                data.statusLabel,
-                                style: TextStyle(
-                                  color: statusColor,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        // ── Icon ───────────────────────────────────
-                        Center(
-                          child: Container(
-                            width: 56,
-                            height: 56,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: statusColor.withValues(alpha: 0.10),
-                              border: Border.all(
-                                color: statusColor.withValues(alpha: 0.20),
-                                width: 1,
-                              ),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(10),
-                              child: data.nozzleImagePath != null
-                                  ? Image.asset(
-                                      data.nozzleImagePath!,
-                                      fit: BoxFit.contain,
-                                      errorBuilder: (_, __, ___) =>
-                                          _fallbackIcon(statusColor),
-                                    )
-                                  : _fallbackIcon(statusColor),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        // ── Divider ────────────────────────────────
-                        Divider(height: 1, color: Colors.grey.shade100),
-
-                        const SizedBox(height: 8),
-
-                        // ── Data Grid ──────────────────────────────
-                        _DataGrid(data: data),
-                      ],
-                    ),
+        boxShadow: [
+          BoxShadow(
+            color: statusColor.withValues(alpha: 0.10),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(width: 5, color: statusColor),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(statusColor),
+                      const SizedBox(height: 14),
+                      _buildNozzleRow(statusColor),
+                      const SizedBox(height: 14),
+                      Divider(height: 1, color: Colors.grey.shade100),
+                      const SizedBox(height: 8),
+                      _DataGrid(data: data),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _fallbackIcon(Color color) {
-    return Icon(
-      Icons.local_gas_station_rounded,
-      color: color,
-      size: 24,
+  Widget _buildHeader(Color statusColor) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'DU ${duNo ?? "—"} · P${data.pumpAutoId}',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1A1A1A),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+          decoration: BoxDecoration(
+            color: statusColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            data.statusLabel,
+            style: TextStyle(
+              color: statusColor,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNozzleRow(Color statusColor) {
+    final nozzles = pumpConfig?.nozzleList ?? const <NozzleConfig>[];
+
+    // If no nozzles in config, show a single bubble for the active nozzle.
+    if (nozzles.isEmpty) {
+      return Center(
+        child: _NozzleBubble(
+          label: 'N${data.nozzleAutoId}',
+          isActive: true,
+          statusColor: statusColor,
+          assetPath: data.nozzleImagePath,
+        ),
+      );
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: nozzles.map((n) {
+        final isActive = n.nozzleNo == data.nozzleAutoId;
+        return _NozzleBubble(
+          label: 'N${n.nozzleNo}',
+          isActive: isActive,
+          statusColor: statusColor,
+          // Active nozzle → show status-specific asset (incl. fuelling gif).
+          // Inactive nozzle → null → fallback to grey nozzle icon.
+          assetPath: isActive ? data.nozzleImagePath : null,
+        );
+      }).toList(),
     );
   }
 }
 
-// ── 2-column data grid ─────────────────────────────────────────────────────
+// ── Nozzle bubble ─────────────────────────────────────────────────────────
+class _NozzleBubble extends StatelessWidget {
+  final String label;
+  final bool isActive;
+  final Color statusColor;
+  final String? assetPath;
+
+  const _NozzleBubble({
+    required this.label,
+    required this.isActive,
+    required this.statusColor,
+    this.assetPath,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final activeColor = isActive ? statusColor : Colors.grey.shade300;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            // Circle background
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: activeColor.withValues(alpha: 0.12),
+                border: Border.all(
+                  color: activeColor,
+                  width: isActive ? 2 : 1,
+                ),
+              ),
+            ),
+
+            // Image inside the bubble
+            SizedBox(
+              width: 36,
+              height: 36,
+              child: _buildImage(),
+            ),
+
+            // Pulsing ring when active + fuelling
+            if (isActive && assetPath != null && assetPath!.endsWith('.gif'))
+              _PulsingRing(color: statusColor, size: 56),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: isActive ? statusColor : Colors.grey.shade500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildImage() {
+    // Active nozzle with known asset → show it (fuelling gif stays animated).
+    if (assetPath != null) {
+      return Image.asset(
+        assetPath!,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => Icon(
+          Icons.local_gas_station_rounded,
+          size: 26,
+          color: statusColor,
+        ),
+      );
+    }
+
+    // Inactive nozzle → plain grey nozzle icon.
+    return ColorFiltered(
+      colorFilter: ColorFilter.mode(
+        isActive ? statusColor : Colors.grey.shade400,
+        BlendMode.srcIn,
+      ),
+      child: Image.asset(
+        'assets/nozzleIcons/nozzle.png',
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => Icon(
+          Icons.local_gas_station_rounded,
+          size: 26,
+          color: isActive ? statusColor : Colors.grey.shade400,
+        ),
+      ),
+    );
+  }
+}
+
+/// Subtle pulsing ring — appears around a fuelling nozzle.
+class _PulsingRing extends StatefulWidget {
+  final Color color;
+  final double size;
+
+  const _PulsingRing({required this.color, required this.size});
+
+  @override
+  State<_PulsingRing> createState() => _PulsingRingState();
+}
+
+class _PulsingRingState extends State<_PulsingRing>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final t = _controller.value;
+        final scale = 1.0 + t * 0.35;
+        final opacity = (1 - t) * 0.5;
+        return Transform.scale(
+          scale: scale,
+          child: Container(
+            width: widget.size,
+            height: widget.size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: widget.color.withValues(alpha: opacity),
+                width: 2,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ── Data grid ─────────────────────────────────────────────────────────────
 class _DataGrid extends StatelessWidget {
   final PumpStatusModel data;
   const _DataGrid({required this.data});
