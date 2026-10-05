@@ -2,9 +2,10 @@ class AppConstants {
   /// Runtime-mutable. Updated by RoBloc after a successful /roconfig probe.
   static String baseUrl = 'http://192.168.1.101';
 
-  /// Probe both known subnets — the ESP has appeared on .1.x and .4.x
-  /// across different Wi-Fi networks.
+  /// Probe both known subnets and the local mock (for development).
   static const List<String> candidateIps = [
+    // Local mock — only responds when `node index.js` is running on this machine
+    '127.0.0.1:8080',
     // 192.168.1.x
     '192.168.1.100',
     '192.168.1.101',
