@@ -1,7 +1,9 @@
-// lib/actions/ui/actions_screen.dart
+// lib/actions/ui/action_screen.dart
 import 'package:flutter/material.dart';
-import '../../price_change/ui/price_change_screen.dart';
+
+import '../../density/ui/density_screen.dart';
 import '../../preset/ui/preset_screen.dart';
+import '../../price_change/ui/price_change_screen.dart';
 
 class ActionsScreen extends StatelessWidget {
   const ActionsScreen({super.key});
@@ -61,6 +63,23 @@ class ActionsScreen extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (_) => const PresetScreen(),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // ── Density card ───────────────────────────────────────────
+            _ActionCard(
+              icon: Icons.water_drop_outlined,
+              iconColor: const Color(0xFF00897B),
+              iconBg: const Color(0xFFE0F2F1),
+              title: 'Density',
+              subtitle: 'Change density for a tank',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const DensityScreen(),
                 ),
               ),
             ),
