@@ -13,6 +13,7 @@ class AnimatedTankWidget extends StatefulWidget {
   final double capacity;
   final int status;
   final double waterVolume;
+  final double density;
 
   const AnimatedTankWidget({
     super.key,
@@ -24,6 +25,7 @@ class AnimatedTankWidget extends StatefulWidget {
     required this.capacity,
     required this.status,
     required this.waterVolume,
+    required this.density,
   });
 
   @override
@@ -380,9 +382,15 @@ class _AnimatedTankWidgetState extends State<AnimatedTankWidget>
             bold: true,
           ),
           const SizedBox(height: 8),
-          _buildStatRow(
+                    _buildStatRow(
             label: 'Capacity',
             value: '${widget.capacity.toStringAsFixed(0)} L',
+            valueColor: const Color(0xFF1A1A1A),
+          ),
+          const SizedBox(height: 8),
+          _buildStatRow(
+            label: 'Density',
+            value: '${widget.density.toStringAsFixed(0)} kg/m³',
             valueColor: const Color(0xFF1A1A1A),
           ),
         ],

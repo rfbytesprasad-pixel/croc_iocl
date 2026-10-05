@@ -8,6 +8,7 @@ import '../bloc/tank_state.dart';
 import '../data/tank_api_client.dart';
 import '../data/tank_repository.dart';
 import '../model/tank_status_model.dart';
+import '../../home/bloc/ro_bloc.dart';
 
 import 'package:croc_iocl_atos/constants/product_options.dart';
 
@@ -18,9 +19,9 @@ class TankScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => TankBloc(
-  tankRepository: TankRepository(
-    apiClient: TankApiClient(),
-  ),
+        tankRepository: TankRepository(
+          apiClient: TankApiClient(),
+        ),
       )..add(const TankStartPolling()),
       child: const _TankView(),
     );
@@ -48,10 +49,9 @@ class _TankViewState extends State<_TankView> {
         return switch (state) {
           TankInitial() => const _LoadingView(),
           TankLoading() => const _LoadingView(),
-          TankLoaded(:final tanks, :final isRefreshing) => _LoadedView(
-              tanks: tanks,
-              isRefreshing: isRefreshing,
-            ),
+          TankLoaded(:final tanks, :final isRefreshing) => tanks.isEmpty
+              ? const _EmptyTanksView()
+              : _LoadedView(tanks: tanks, isRefreshing: isRefreshing),
           TankError(
             :final message,
             :final hasPreviousData,
@@ -63,7 +63,7 @@ class _TankViewState extends State<_TankView> {
                     isRefreshing: false,
                     errorBanner: message,
                   )
-                : _ErrorView(message: message),
+                : const _EmptyTanksView(),
         };
       },
     );
@@ -199,16 +199,17 @@ class _LoadedView extends StatelessWidget {
             itemBuilder: (_, index) {
               final tank = tanks[index];
 
-              return AnimatedTankWidget(
-                tankId: tank.tankAutoId.toString(),
-                productName: productNameFromId(tank.productId),
-                productLevel: tank.productLevel,
-                waterLevel: tank.waterLevel,
-                productVolume: tank.productVolume,
-                capacity: tank.productVolume + tank.ullage,
-                status: tank.status,
-                waterVolume: tank.waterVolume,
-              );
+            return AnimatedTankWidget(
+  tankId: tank.tankAutoId.toString(),
+  productName: productNameFromId(tank.productId),
+  productLevel: tank.productLevel,
+  waterLevel: tank.waterLevel,
+  productVolume: tank.productVolume,
+  capacity: tank.productVolume + tank.ullage,
+  status: tank.status,
+  waterVolume: tank.waterVolume,
+  density: tank.density,
+);
             },
           ),
         ),
@@ -217,47 +218,166 @@ class _LoadedView extends StatelessWidget {
   }
 }
 
-// ── Error ────────────────────────────────────────────────────────────────────
-class _ErrorView extends StatelessWidget {
-  final String message;
-  const _ErrorView({required this.message});
+// ── Empty state ─────────────────────────────────────────────────────────────
+class _EmptyTanksView extends StatelessWidget {
+  const _EmptyTanksView();
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.water_drop_outlined,
-                size: 64, color: Colors.grey.shade300),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF37022),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+    final config = context.watch<RoBloc>().roConfig;
+    final totalTanks = config?.totalTanks ?? 2;
+
+    return ListView(
+      padding: const EdgeInsets.only(top: 8, bottom: 16),
+      children: [
+        Container(
+          margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.amber.shade50,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.amber.shade200),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.info_outline_rounded,
+                  size: 18, color: Colors.amber.shade800),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Live tank data unavailable. Showing $totalTanks tank slots from configuration.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.amber.shade800,
+                  ),
                 ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Retry'),
-              onPressed: () {
-                context.read<TankBloc>().add(const TankStartPolling());
-              },
+            ],
+          ),
+        ),
+        ...List.generate(
+          totalTanks,
+          (i) => _EmptyTankCard(tankNumber: i + 1),
+        ),
+      ],
+    );
+  }
+}
+
+class _EmptyTankCard extends StatelessWidget {
+  final int tankNumber;
+  const _EmptyTankCard({required this.tankNumber});
+
+  @override
+  Widget build(BuildContext context) {
+    final grey = Colors.grey.shade300;
+
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: grey, width: 1.5),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  'Tank $tankNumber',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'No Data',
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
             ),
+            const SizedBox(height: 16),
+            Container(
+              height: 140,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: grey),
+              ),
+              child: Center(
+                child: Icon(
+                  Icons.water_drop_outlined,
+                  size: 48,
+                  color: Colors.grey.shade400,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const _EmptyStatRow(label: 'Product Level', value: '— mm'),
+            const SizedBox(height: 8),
+            const _EmptyStatRow(label: 'Water Level', value: '— mm'),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Divider(height: 1, color: Color(0xFFEEEEEE)),
+            ),
+            const _EmptyStatRow(label: 'Volume', value: '— L'),
+            const SizedBox(height: 8),
+            const _EmptyStatRow(label: 'Ullage', value: '— L'),
+            const SizedBox(height: 8),
+            const _EmptyStatRow(label: 'Capacity', value: '— L'),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _EmptyStatRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _EmptyStatRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF555555),
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade400,
+          ),
+        ),
+      ],
     );
   }
 }
