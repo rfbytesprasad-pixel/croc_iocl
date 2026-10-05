@@ -1,5 +1,6 @@
 // lib/pump/ui/pump_card.dart
 import 'package:flutter/material.dart';
+import '../../constants/product_options.dart';
 import '../../home/model/ro_config_model.dart';
 import '../model/pump_status_model.dart';
 
@@ -126,10 +127,9 @@ class PumpCard extends StatelessWidget {
         final isActive = n.nozzleNo == data.nozzleAutoId;
         return _NozzleBubble(
           label: 'N${n.nozzleNo}',
+          productNo: n.productNo,
           isActive: isActive,
           statusColor: statusColor,
-          // Active nozzle → show status-specific asset (incl. fuelling gif).
-          // Inactive nozzle → null → fallback to grey nozzle icon.
           assetPath: isActive ? data.nozzleImagePath : null,
         );
       }).toList(),
@@ -140,12 +140,14 @@ class PumpCard extends StatelessWidget {
 // ── Nozzle bubble ─────────────────────────────────────────────────────────
 class _NozzleBubble extends StatelessWidget {
   final String label;
+  final int? productNo;
   final bool isActive;
   final Color statusColor;
   final String? assetPath;
 
   const _NozzleBubble({
     required this.label,
+    this.productNo,
     required this.isActive,
     required this.statusColor,
     this.assetPath,
@@ -161,7 +163,6 @@ class _NozzleBubble extends StatelessWidget {
         Stack(
           alignment: Alignment.center,
           children: [
-            // Circle background
             Container(
               width: 56,
               height: 56,
@@ -174,15 +175,11 @@ class _NozzleBubble extends StatelessWidget {
                 ),
               ),
             ),
-
-            // Image inside the bubble
             SizedBox(
               width: 36,
               height: 36,
               child: _buildImage(),
             ),
-
-            // Pulsing ring when active + fuelling
             if (isActive && assetPath != null && assetPath!.endsWith('.gif'))
               _PulsingRing(color: statusColor, size: 56),
           ],
@@ -196,12 +193,22 @@ class _NozzleBubble extends StatelessWidget {
             color: isActive ? statusColor : Colors.grey.shade500,
           ),
         ),
+        if (productNo != null) ...[
+          const SizedBox(height: 1),
+          Text(
+            productNameFromId(productNo!),
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+              color: isActive ? statusColor.withValues(alpha: 0.9) : Colors.grey.shade500,
+            ),
+          ),
+        ],
       ],
     );
   }
 
   Widget _buildImage() {
-    // Active nozzle with known asset → show it (fuelling gif stays animated).
     if (assetPath != null) {
       return Image.asset(
         assetPath!,
@@ -214,7 +221,6 @@ class _NozzleBubble extends StatelessWidget {
       );
     }
 
-    // Inactive nozzle → plain grey nozzle icon.
     return ColorFiltered(
       colorFilter: ColorFilter.mode(
         isActive ? statusColor : Colors.grey.shade400,
